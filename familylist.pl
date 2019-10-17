@@ -1,137 +1,46 @@
-% The purpose of this homework is to develop skills in the area of PROLOG list processing.
-% 1. Write a PROLOG program that investigates family relationships using lists. 
-% The facts should be organized as follows:
+% Write a PROLOG program that investigates family relationships using lists. 
+% The facts is organized as follows:
 
-% - father(Baha)
-% - Brother1(Belek)
-% - brother2(tilek)
-% - maleCousin(Arthur)
-% - Uncle(Nurlan)
-% - grandson(Platon)
-% - grandfather(Turaly)
-% - greatgrandfather(kurmant)
+malefam([baha, omurbek, belek, chynaly, daniel, turaly, kurmant]). 
+femalefam([marsia, bakulia, sada, diana, nurpasha, aidai, batma, nazik, nigina]).
 
-% - mother(Marsia)
-% - sister1(Nazik)
-% - sister2(Nigina)
-% - femaleCousin(Ardak)
-% - granddaughter(Aliya)
-% - Aunt(Valentina)
-% - grandmother(Nurpasha)
-% - greatgrandmother(Narpasha)
+family([baha, marsia, [bakulia, nigina]]).
+family([omurbek, marsia, [nazik, belek]]).
+family([chynaly, sada, [daniel, diana]]).
+family([turaly, nurpasha, [marsia, chynaly]]).
+family([kurmant, aidai, [turaly, batma]]).
 
-% family([[baha, marsia], 
-%        [belek, tilek, nazik, nigina], 
-%        [arthur, ardak], 
-%        [nurlan, valentina], 
-%        [platon, medina], 
-%        [turaly, nurpasha],
-%        [kurmant, narpasha]]).
-
-malefam([baha, belek, tilek, arthur, nurlan, platon, turaly, kurmant]). 
-femalefam([marsia, nazik, nigina, ardak, medina, valentina, nurpasha, narpasha]). 
-% family([father, mother], [[brother1, brother2], [sister1, sister2]]).
-
-family(
-       [[[sibling1], [brother1, sister1]], [[sibling2], [brother2, sister2]], [cousin]],
-       [parent, [father, mother], [uncle, aunt]], 
-       [grandparent,[grandfather, grandmother]],
-       [greatgrandparent], 
-       [ancestor]
-      ).
-
-% Write rules that define the following relations:
+% Rules that define the following relations:
 member(H, [H|_]). % base case
 member(H,[_|T]) :- member(H,T). % recursive case for all members in list
 
-% father
-father(FATHER, CHILD) :-  
-    family([[Sibling,_],[Sibling2,_], [_]],
-    [_,[FATHER,_], [_,_]],
-    [_,[_,_]],
-    [_],
-    [_]), 
-    (member(CHILD, Sibling); 
-    member(CHILD, Sibling2)).
+male(M) :- malefam(MALES), member(M, MALES).
+female(F) :- femalefam(FEMALES), member(F, FEMALES).
 
-% mother
-mother(MOTHER, CHILD) :-  
-    family([[Sibling,_],[Sibling2,_], [_]],
-    [_,[_,MOTHER], [_,MOTHER]],
-    [_,[_,_]],
-    [_],
-    [_]), 
-    (member(CHILD, Sibling); 
-    member(CHILD, Sibling2)).
-
-% parent
+father(FATHER, CHILD) :- male(FATHER), family([FATHER,_,L]), member(CHILD, L).
+mother(MOTHER, CHILD) :- female(MOTHER), family([_,MOTHER,L]), member(CHILD, L).
 parent(PARENT, CHILD) :- father(PARENT, CHILD); mother(PARENT, CHILD).
 
-% siblings1
-siblings1(Siblings1) :- 
-    family([[_,Siblings1],[_,_], [_]],
-    [_,[_,_], [_,_]],
-    [_,[_,_]],
-    [_],
-    [_]).
+siblings1(SIB1, SIB2) :- family([D, _, L1]), family([D, _, L2]), member(SIB1, L1), member(SIB2, L2), L1 \= L2;
+                         family([_, M, L1]), family([_, M, L2]), member(SIB1, L1), member(SIB2, L2), L1 \= L2.
+siblings2(SIB1, SIB2) :- father(F, SIB1), father(F, SIB2), mother(P, SIB1), mother(P, SIB2), SIB1 \= SIB2.
 
-% siblings2
-siblings2(Siblings2) :-  
-    family([[_,_],[_,Siblings2], [_]],
-    [_,[_,_], [_,_]],
-    [_,[_,_]],
-    [_],
-    [_]).
+brother1(B, HALFSIB) :- male(B), siblings1(B, HALFSIB).
+brother2(B, SIB) :- male(B), siblings2(B, SIB).
+sister1(S, HALFSIB) :- female(S), siblings1(S, HALFSIB).
+sister2(S, SIB) :- female(S), siblings2(S, SIB).
 
-% brothers
-brother1(Brother) :- siblings1(Brother).
-brother2(Brother) :- siblings2(Brother).
+uncle(UNCLE,CHILD) :- brother2(UNCLE,Par), parent(Par,CHILD); brother1(UNCLE,Par), parent(Par,CHILD).
+aunt(AUNT,CHILD) :- sister2(AUNT,Par), parent(Par,CHILD); sister1(AUNT,Par), parent(Par,CHILD).
+cousin(COUSIN1, COUSIN2) :- uncle(Uncle, COUSIN1), father(Uncle, COUSIN2); aunt(Aunt, COUSIN1), mother(Aunt, COUSIN2).
 
-% reverse([siblings1], [siblings1]).
-% sisters
-sister1(Sister) :- siblings1(Sister).
-sister2(Sister) :- siblings2(Sister).
+grandchild(GRANDCHILD, GRANDPARENT) :- parent(Parent, GRANDCHILD), parent(GRANDPARENT, Parent).
+grandson(GRANDSON, GRANDPARENT) :- male(GRANDSON), grandchild(GRANDSON, GRANDPARENT).
+granddaughter(GRANDDAUGHTER, GRANDPARENT) :- female(GRANDDAUGHTER), grandchild(GRANDDAUGHTER, GRANDPARENT).
+greatgrandparent(GREATGRANDPARENT, GREATGRANDCHILD) :- 
+            parent(GREATGRANDPARENT, GrandParent), 
+            parent(GrandParent, Parent), 
+            parent(Parent, GREATGRANDCHILD).
 
-% cousins
-cousin(NAME1, NAME2) :- siblings1(NAME1), siblings2(NAME2).
-
-% uncle
-% uncle(UNCLE, CHILDNAME) :- is_parent_of(Uncle, CHILDNAME), brother1(Uncle, UNCLE).
-uncle(UNCLE, CHILDNAME) :- parent(Uncle, CHILDNAME), siblings1(Uncle, UNCLE).
-
-% male(M) :- malefam(MALES), member(M, MALES).
-% member(H,[H|T]) :- member(H,T). % recursive case for first member of the list
-% male(M) :- family([M,_],_).
-% male(M) :- family(_,[Brothers,_]), member(M,Brothers).
-% female(F) :- femalefam(FEMALES), member(F, FEMALES).
-
-% member([H|T]) :- malefam([H|T]), member([T]).
-% member([A, B, C, D, H, G, E|T]) :- malefam([A, B, C, D, H, G, E|T]). 
-% member([A, B, C, D, H, G, E|T]) :- female([A, B, C, D, H, G, E|T]).
-
-
-% uncle(UNCLE, CHILDNAME).
-% aunt(AUNT, CHILDNAME).
-% grandchild(GRANDCHILD, GRANDPARENT).
-% granddaughter(GRANDDAUGHTER, GRANDPARENT).
-% grandson(GRANDSON, GRANDPARENT).
-% greatgrandparent(GREATGRANDPARENT, GREATGRANDCHILD).
-% ancestor(ANCESTOR, CHILDNAME).
-
-
-
-% father, mother, parent
-% siblings1, siblings2
-% brother1, brother2
-% sister1, sister2
-% cousins
-% uncle, aunt
-% grandchild, grandson, granddaughter
-% greatgrandparent
-% ancestor
-
-% For each of these rules show an example of its use.
-
-
-
-
+ancestors(ANCESTORS, DESCENDANT) :- parent(ANCESTORS, DESCENDANT). % base case
+ancestors(ANCESTORS, DESCENDANT) :- parent(Parent, DESCENDANT), ancestors(ANCESTORS, Parent). % recursive case for all members in list
