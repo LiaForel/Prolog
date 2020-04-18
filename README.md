@@ -1,2 +1,1 @@
-# CSC600
-hw1.1-1.5
+Prolog practice
